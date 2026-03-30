@@ -41,19 +41,20 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install protoc-gen-prost-crate
-        run: cargo install protoc-gen-prost-crate || echo "Already installed"
-
       - name: Setup Buf
-        uses: bufbuild/buf-setup-action@v1
+        uses: bufbuild/buf-action@v1
         with:
+          setup_only: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Buf Lint
         run: buf lint
 
-      - name: Run Buf Generate
-        run: buf generate
+      - name: Install protoc-gen-prost-crate and generate stubs
+        run: |
+          cargo install protoc-gen-prost-crate || echo "Already installed"
+          export PATH="$HOME/.cargo/bin:$PATH"
+          buf generate
 
       - name: Commit generated stubs
         if: github.event_name != 'pull_request'
