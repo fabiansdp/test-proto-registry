@@ -51,14 +51,22 @@ jobs:
       - name: Install protoc and protoc-gen-prost-crate
         if: steps.cache-tools.outputs.cache-hit != 'true'
         run: |
-          echo "Installing protoc..."
-          PROTOC_VERSION=29.3
-          curl -fsSL "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" -o /tmp/protoc.zip
-          unzip -o /tmp/protoc.zip -d "$HOME/.local" bin/protoc include/*
-          rm /tmp/protoc.zip
+          if [ ! -f "$HOME/.local/bin/protoc" ]; then
+            echo "Installing protoc..."
+            PROTOC_VERSION=29.3
+            curl -fsSL "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" -o /tmp/protoc.zip
+            unzip -o /tmp/protoc.zip -d "$HOME/.local" bin/protoc include/*
+            rm /tmp/protoc.zip
+          else
+            echo "protoc restored from partial cache hit, skipping install"
+          fi
 
-          echo "Installing protoc-gen-prost-crate..."
-          cargo install protoc-gen-prost-crate
+          if [ ! -f "$HOME/.cargo/bin/protoc-gen-prost-crate" ]; then
+            echo "Installing protoc-gen-prost-crate..."
+            cargo install protoc-gen-prost-crate
+          else
+            echo "protoc-gen-prost-crate restored from partial cache hit, skipping install"
+          fi
 
       - name: Add tools to PATH
         run: |
