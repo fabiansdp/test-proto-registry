@@ -68,6 +68,13 @@ jobs:
           # Set up the Action and do nothing else.
           setup_only: true
 
+      # Install protobuf compiler (required by prost plugins at runtime)
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
       # Install Rust toolchain
       - uses: dtolnay/rust-toolchain@stable
 
