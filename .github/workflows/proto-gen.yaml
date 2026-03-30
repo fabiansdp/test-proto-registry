@@ -110,6 +110,10 @@ jobs:
           which protoc-gen-prost
           which protoc-gen-tonic
           which protoc-gen-prost-crate
+          # Confirm they're actually executable
+          protoc-gen-prost --help || true
+          protoc-gen-tonic --help || true
+          protoc-gen-prost-crate --help || true
 
       # Clean old generated code
       - name: Clean generated directory
