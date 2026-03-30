@@ -5,14 +5,10 @@ on:
     branches: [main]
     paths:
       - "proto/**"
-      - "buf.gen.yaml"
-      - "buf.yaml"
       - "cargo.toml.tmpl"
   pull_request:
     paths:
       - "proto/**"
-      - "buf.gen.yaml"
-      - "buf.yaml"
       - "cargo.toml.tmpl"
   workflow_dispatch:
 
