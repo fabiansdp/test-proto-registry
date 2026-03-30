@@ -7,13 +7,13 @@ on:
       - "proto/**"
       - "buf.gen.yaml"
       - "buf.yaml"
-      - "Cargo.toml.tmpl"
+      - "cargo.toml.tmpl"
   pull_request:
     paths:
       - "proto/**"
       - "buf.gen.yaml"
       - "buf.yaml"
-      - "Cargo.toml.tmpl"
+      - "cargo.toml.tmpl"
   workflow_dispatch:
 
 jobs:
@@ -41,25 +41,22 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install Buf
-        run: |
-          BUF_VERSION="1.50.0"
-          sudo curl -sSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-$(uname -s)-$(uname -m)" -o /usr/local/bin/buf
-          sudo chmod +x /usr/local/bin/buf
-          buf --version
+      - name: Setup Buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
 
       - name: Install protoc and protoc-gen-prost-crate
         run: |
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
           cargo install protoc-gen-prost-crate
-          sudo cp "$HOME/.cargo/bin/protoc-gen-prost-crate" /usr/local/bin/
-          which protoc-gen-prost-crate
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Run Buf Lint
         run: buf lint
 
       - name: Generate stubs
-        run: buf generate --debug
+        run: buf generate
 
       - name: Commit generated stubs
         if: github.event_name != 'pull_request'
