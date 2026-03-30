@@ -5,9 +5,9 @@ package order.v1;
 import "common/v1/types.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/<your-org>/proto-repo/gen/go/order/v1;orderv1";
+option go_package = "github.com/fabiansdp/proto-repo/gen/go/order/v1;orderv1";
 option java_multiple_files = true;
-option java_package = "com.yourorg.proto.order.v1";
+option java_package = "com.fabiansdp.proto.order.v1";
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 

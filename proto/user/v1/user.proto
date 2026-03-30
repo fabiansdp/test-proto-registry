@@ -5,9 +5,9 @@ package user.v1;
 import "common/v1/types.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/<your-org>/proto-repo/gen/go/user/v1;userv1";
+option go_package = "github.com/fabiansdp/proto-repo/gen/go/user/v1;userv1";
 option java_multiple_files = true;
-option java_package = "com.yourorg.proto.user.v1";
+option java_package = "com.fabiansdp.proto.user.v1";
 
 // ─── Messages ────────────────────────────────────────────────────────────────
 
