@@ -34,6 +34,7 @@ jobs:
 
       - name: Cache cargo registry
         uses: actions/cache@v5
+        id: cargo-cache
         with:
           path: |
             ~/.cargo/bin/
@@ -41,18 +42,24 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml.tmpl') }}
 
       - name: Setup Buf
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
 
-      - name: Install protoc and protoc-gen-prost-crate
+      - name: Install protoc
         run: |
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install protoc-gen-prost-crate
+        if: steps.cargo-cache.outputs.cache-hit != 'true'
+        run: |
           cargo install protoc-gen-prost-crate
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Run Buf Lint
         run: buf lint
 
