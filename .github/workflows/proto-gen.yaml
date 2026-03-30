@@ -60,7 +60,7 @@ jobs:
       # Use the dedicated protoc installer action (cached internally)
       # instead of apt-get which re-downloads every run.
       - name: Install protoc
-        uses: arduino/setup-protoc@v4
+        uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
