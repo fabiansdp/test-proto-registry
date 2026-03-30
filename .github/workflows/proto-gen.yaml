@@ -27,25 +27,33 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache Buf
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cache/buf
-            ~/.buf
-          key: ${{ runner.os }}-buf-${{ hashFiles('proto/buf.yaml', 'proto/buf.gen.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-buf-
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install protoc-gen-prost-crate
+        run: cargo install protoc-gen-prost-crate || echo "Already installed"
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Buf Lint
+        run: buf lint
 
       - name: Run Buf Generate
-        uses: bufbuild/buf-action@v1
-        with:
-          input: proto
-          push: false
-          lint: true
-          breaking: true
-          format: false
-          generate: true
+        run: buf generate
 
       - name: Commit generated stubs
         if: github.event_name != 'pull_request'
