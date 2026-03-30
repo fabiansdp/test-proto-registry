@@ -41,34 +41,24 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Setup Buf
-        uses: bufbuild/buf-action@v1
-        with:
-          setup_only: true
+      - name: Install Buf
+        run: |
+          BUF_VERSION="1.50.0"
+          curl -sSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-$(uname -s)-$(uname -m)" -o /usr/local/bin/buf
+          chmod +x /usr/local/bin/buf
+          buf --version
+
+      - name: Install protoc and protoc-gen-prost-crate
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          cargo install protoc-gen-prost-crate
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Run Buf Lint
         run: buf lint
 
-      - name: Install protoc-gen-prost-crate
-        run: |
-          sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          cargo install protoc-gen-prost-crate
-
-      - name: Add cargo bin to PATH
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
       - name: Generate stubs
-        run: |
-          protoc-gen-prost-crate --version
-          buf generate
-
-      # - name: Install protoc-gen-prost-crate and generate stubs
-      #   run: |
-      #     sudo apt-get update && sudo apt-get install -y protobuf-compiler
-      #     cargo install protoc-gen-prost-crate
-      #     protoc --version
-      #     protoc-gen-prost-crate --version
-      #     buf generate
+        run: buf generate
 
       - name: Commit generated stubs
         if: github.event_name != 'pull_request'
