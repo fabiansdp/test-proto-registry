@@ -80,22 +80,6 @@ jobs:
 
       # Cache protoc plugins
       - name: Cache protoc plugins
-        uses: actions/cache@v5
-        with:
-          path: ~/.cargo/bin
-          key: protoc-plugins-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-
-      # Install buf CLI only — disable all automatic steps
-      - uses: bufbuild/buf-action@v1
-        with:
-          setup_only: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Install Rust toolchain
-      - uses: dtolnay/rust-toolchain@stable
-
-      # Cache protoc plugins
-      - name: Cache protoc plugins
         id: cache-plugins
         uses: actions/cache@v5
         with:
@@ -121,6 +105,7 @@ jobs:
           protoc-gen-prost --help || true
           protoc-gen-tonic --help || true
           protoc-gen-prost-crate --help || true
+          buf generate
 
       # Clean old generated code
       - name: Clean generated directory
