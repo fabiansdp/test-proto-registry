@@ -96,6 +96,8 @@ jobs:
 
       # Run buf generate — this populates gen/rust/
       - name: Buf generate
+        env:
+          PATH: $HOME/.cargo/bin:$PATH
         run: buf generate
 
       # Make sure the generated crate actually compiles
