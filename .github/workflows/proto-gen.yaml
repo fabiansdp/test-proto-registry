@@ -5,9 +5,15 @@ on:
     branches: [main]
     paths:
       - "proto/**"
+      - "buf.gen.yaml"
+      - "buf.yaml"
+      - "Cargo.toml.tmpl"
   pull_request:
     paths:
       - "proto/**"
+      - "buf.gen.yaml"
+      - "buf.yaml"
+      - "Cargo.toml.tmpl"
   workflow_dispatch:
 
 jobs:
@@ -26,7 +32,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo
+      - name: Cache cargo registry
         uses: actions/cache@v5
         with:
           path: |
@@ -34,29 +40,24 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
+            target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
 
       - name: Setup Buf
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
 
-      - name: Install protoc
+      - name: Install protoc and protoc-gen-prost-crate
         run: |
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
-
-      - name: Install protoc-gen-prost-crate
-        run: |
-          which protoc-gen-prost-crate && echo "protoc-gen-prost-crate already installed" || cargo install protoc-gen-prost-crate
+          cargo install protoc-gen-prost-crate
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
       - name: Run Buf Lint
         run: buf lint
 
       - name: Generate stubs
-        run: buf generate --verbose
+        run: buf generate
 
       - name: Commit generated stubs
         uses: iarekylew00t/verified-bot-commit@v2
