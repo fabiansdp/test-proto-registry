@@ -32,7 +32,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo
+      - name: Cache toolchain and registry
         uses: actions/cache@v5
         with:
           path: |
@@ -40,9 +40,11 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('cargo.toml.tmpl') }}
+            ~/.local/bin/protoc
+            ~/.local/include/google/
+          key: ${{ runner.os }}-toolchain-${{ hashFiles('cargo.toml.tmpl') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-toolchain-
 
       - name: Setup Buf
         uses: bufbuild/buf-action@v1
@@ -51,13 +53,23 @@ jobs:
 
       - name: Install protoc and protoc-gen-prost-crate
         run: |
-          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          if [ ! -f "$HOME/.local/bin/protoc" ]; then
+            echo "Installing protoc..."
+            PROTOC_VERSION=29.3
+            curl -fsSL "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" -o /tmp/protoc.zip
+            unzip -o /tmp/protoc.zip -d "$HOME/.local" bin/protoc include/*
+            rm /tmp/protoc.zip
+          else
+            echo "protoc found in cache, skipping install"
+          fi
+
           if [ ! -f "$HOME/.cargo/bin/protoc-gen-prost-crate" ]; then
             echo "Installing protoc-gen-prost-crate..."
             cargo install protoc-gen-prost-crate
           else
             echo "protoc-gen-prost-crate found in cache, skipping install"
           fi
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Run Buf Lint
