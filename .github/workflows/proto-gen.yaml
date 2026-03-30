@@ -82,6 +82,17 @@ jobs:
       - name: Clean generated directory
         run: rm -rf gen/rust/src gen/rust/Cargo.toml
 
+      # Make ~/.cargo/bin visible to buf and all subsequent steps
+      - name: Add Cargo bin to PATH
+        run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      # Sanity-check that buf can actually resolve the plugins before generating
+      - name: Verify plugins are on PATH
+        run: |
+          which protoc-gen-prost
+          which protoc-gen-tonic
+          which protoc-gen-prost-crate
+
       # Run buf generate — this populates gen/rust/
       - name: Buf generate
         run: buf generate
