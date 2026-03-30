@@ -31,7 +31,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
@@ -45,16 +45,16 @@ jobs:
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Buf Lint
         run: buf lint
 
       - name: Install protoc-gen-prost-crate and generate stubs
         run: |
-          cargo install protoc-gen-prost-crate || echo "Already installed"
-          export PATH="$HOME/.cargo/bin:$PATH"
-          buf generate
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+          cargo install protoc-gen-prost-crate
+          protoc --version
+          protoc-gen-prost-crate --version
 
       - name: Commit generated stubs
         if: github.event_name != 'pull_request'
