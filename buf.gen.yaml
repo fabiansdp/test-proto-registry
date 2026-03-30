@@ -4,17 +4,14 @@ managed:
 plugins:
   - local: protoc-gen-prost
     out: gen/rust/src
-    opt:
-      - compile_well_known_types=false
-      - extern_path=.google.protobuf=::prost_types
+    strategy: all
 
   - local: protoc-gen-tonic
     out: gen/rust/src
-    opt:
-      - compile_well_known_types=false
-      - extern_path=.google.protobuf=::prost_types
+    strategy: all
 
   - local: protoc-gen-prost-crate
     out: gen/rust
+    strategy: all
     opt:
       - gen_crate=Cargo.toml.tmpl
