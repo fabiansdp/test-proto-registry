@@ -52,6 +52,11 @@ jobs:
     needs: lint-and-breaking
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+
+    env:
+      BUF_GEN_PLUGIN_PARALLELISM: 1
+      CARGO_BUILD_JOBS: 2
+
     steps:
       - uses: actions/checkout@v6
         with:
@@ -65,47 +70,48 @@ jobs:
       # Install Rust toolchain
       - uses: dtolnay/rust-toolchain@stable
 
-      # Cache the cargo-installed protoc plugins so we don't rebuild every run
+      # Cache protoc plugins
       - name: Cache protoc plugins
         uses: actions/cache@v5
         with:
           path: ~/.cargo/bin
-          key: protoc-plugins-${{ runner.os }}-v1
+          key: protoc-plugins-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
-      # Install the three prost/tonic buf plugins
+      # Install the prost/tonic buf plugins
       - name: Install protoc-gen plugins
         run: |
-          command -v protoc-gen-prost       || cargo install protoc-gen-prost
-          command -v protoc-gen-tonic       || cargo install protoc-gen-tonic
-          command -v protoc-gen-prost-crate || cargo install protoc-gen-prost-crate
+          cargo install protoc-gen-prost --locked
+          cargo install protoc-gen-tonic --locked
+          cargo install protoc-gen-prost-crate --locked
 
-      # Wipe old generated code to avoid stale files
-      - name: Clean generated directory
-        run: rm -rf gen/rust/src gen/rust/Cargo.toml
-
-      # Make ~/.cargo/bin visible to buf and all subsequent steps
+      # Ensure Cargo bin is available everywhere
       - name: Add Cargo bin to PATH
-        run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_ENV
 
-      # Sanity-check that buf can actually resolve the plugins before generating
-      - name: Verify plugins are on PATH
+      # Debug step (optional but useful)
+      - name: Verify plugins are installed
         run: |
+          echo "PATH=$PATH"
           which protoc-gen-prost
           which protoc-gen-tonic
           which protoc-gen-prost-crate
 
-      # Run buf generate — this populates gen/rust/
+      # Clean old generated code
+      - name: Clean generated directory
+        run: rm -rf gen/rust/src gen/rust/Cargo.toml
+
+      # Generate code
       - name: Buf generate
         env:
           PATH: $HOME/.cargo/bin:$PATH
         run: buf generate
 
-      # Make sure the generated crate actually compiles
+      # Verify generated crate compiles
       - name: Verify generated crate compiles
         working-directory: gen/rust
         run: cargo check
 
-      # Commit the generated code back to main
+      # Commit generated code
       - name: Commit generated code
         run: |
           git config user.name "github-actions[bot]"
@@ -118,7 +124,7 @@ jobs:
             git push
           fi
 
-      # Tag so downstream services can pin to a specific version
+      # Tag version
       - name: Create version tag
         run: |
           TAG="rust/v0.1.0-$(date +%Y%m%d%H%M%S)"
