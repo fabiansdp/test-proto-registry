@@ -55,6 +55,7 @@ jobs:
           cargo install protoc-gen-prost-crate
           protoc --version
           protoc-gen-prost-crate --version
+          buf generate
 
       - name: Commit generated stubs
         if: github.event_name != 'pull_request'
