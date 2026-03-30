@@ -20,8 +20,6 @@ jobs:
   generate:
     name: Generate Rust gRPC Stubs
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout repository
