@@ -86,7 +86,9 @@ jobs:
 
       # Ensure Cargo bin is available everywhere
       - name: Add Cargo bin to PATH
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_ENV
+        run: |
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
 
       # Debug step (optional but useful)
       - name: Verify plugins are installed
