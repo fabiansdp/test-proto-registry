@@ -65,7 +65,8 @@ jobs:
       # Install buf CLI
       - uses: bufbuild/buf-action@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Set up the Action and do nothing else.
+          setup_only: true
 
       # Install Rust toolchain
       - uses: dtolnay/rust-toolchain@stable
@@ -77,23 +78,35 @@ jobs:
           path: ~/.cargo/bin
           key: protoc-plugins-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
-      # Install the prost/tonic buf plugins
+      # Install buf CLI only — disable all automatic steps
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Install Rust toolchain
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Cache protoc plugins
+      - name: Cache protoc plugins
+        id: cache-plugins
+        uses: actions/cache@v5
+        with:
+          path: ~/.cargo/bin
+          key: protoc-plugins-${{ runner.os }}
+
+      # Install the prost/tonic buf plugins (skipped if cache hit)
       - name: Install protoc-gen plugins
+        if: steps.cache-plugins.outputs.cache-hit != 'true'
         run: |
           cargo install protoc-gen-prost --locked
           cargo install protoc-gen-tonic --locked
           cargo install protoc-gen-prost-crate --locked
 
-      # Ensure Cargo bin is available everywhere
-      - name: Add Cargo bin to PATH
+      # Verify everything is on PATH
+      - name: Verify tools
         run: |
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
-
-      # Debug step (optional but useful)
-      - name: Verify plugins are installed
-        run: |
-          echo "PATH=$PATH"
+          which buf
           which protoc-gen-prost
           which protoc-gen-tonic
           which protoc-gen-prost-crate
@@ -104,8 +117,6 @@ jobs:
 
       # Generate code
       - name: Buf generate
-        env:
-          PATH: $HOME/.cargo/bin:$PATH
         run: buf generate
 
       # Verify generated crate compiles
