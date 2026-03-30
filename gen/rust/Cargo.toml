@@ -19,3 +19,4 @@ proto_full = ["common-v1","gateway-v1","order-v1","user-v1"]
 prost = "0.14.3"
 prost-types = "0.14.3"
 tonic = { version = "0.14.5", features = ["default"] }
+tonic-prost = "0.14.5"
