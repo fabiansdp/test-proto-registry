@@ -44,21 +44,26 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.toml.tmpl') }}
 
+      - name: Add cargo bin to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Setup Buf
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
 
       - name: Install protoc
-        run: |
-          sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - name: Install protoc-gen-prost-crate
         if: steps.cargo-cache.outputs.cache-hit != 'true'
+        run: cargo install protoc-gen-prost-crate
+
+      - name: Verify toolchain
         run: |
-          cargo install protoc-gen-prost-crate
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          echo "PATH=$PATH"
+          which protoc && protoc --version
+          which protoc-gen-prost-crate && echo "protoc-gen-prost-crate found"
 
       - name: Run Buf Lint
         run: buf lint
