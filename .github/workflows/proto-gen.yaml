@@ -26,56 +26,37 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache toolchain binaries
-        id: cache-tools
+      - name: Cache cargo
         uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/
-            ~/.local/bin/protoc
-            ~/.local/include/google
-          key: ${{ runner.os }}-tools-protoc-prost-crate-v1
-          restore-keys: |
-            ${{ runner.os }}-tools-
-
-      - name: Cache cargo registry
-        uses: actions/cache@v5
-        with:
-          path: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-registry-
-
-      - name: Install protoc
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: |
-          PROTOC_VERSION=29.3
-          curl -fsSL "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" -o /tmp/protoc.zip
-          unzip -o /tmp/protoc.zip -d "$HOME/.local" bin/protoc include/*
-          rm /tmp/protoc.zip
-
-      - name: Install protoc-gen-prost-crate
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: cargo install protoc-gen-prost-crate
-
-      - name: Add tools to PATH
-        run: |
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            ${{ runner.os }}-cargo-
 
       - name: Setup Buf
         uses: bufbuild/buf-action@v1
         with:
           setup_only: true
 
+      - name: Install protoc
+        run: |
+          sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Install protoc-gen-prost-crate
+        run: |
+          which protoc-gen-prost-crate && echo "protoc-gen-prost-crate already installed" || cargo install protoc-gen-prost-crate
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: Run Buf Lint
         run: buf lint
 
       - name: Generate stubs
-        run: buf generate
+        run: buf generate --verbose
 
       - name: Commit generated stubs
         uses: iarekylew00t/verified-bot-commit@v2
