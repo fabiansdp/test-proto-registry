@@ -32,16 +32,17 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # - name: Cache cargo registry
-      #   uses: actions/cache@v5
-      #   with:
-      #     path: |
-      #       ~/.cargo/bin/
-      #       ~/.cargo/registry/index/
-      #       ~/.cargo/registry/cache/
-      #       ~/.cargo/git/db/
-      #       target/
-      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('cargo.toml.tmpl') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Setup Buf
         uses: bufbuild/buf-action@v1
@@ -51,7 +52,12 @@ jobs:
       - name: Install protoc and protoc-gen-prost-crate
         run: |
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
-          cargo install protoc-gen-prost-crate
+          if [ ! -f "$HOME/.cargo/bin/protoc-gen-prost-crate" ]; then
+            echo "Installing protoc-gen-prost-crate..."
+            cargo install protoc-gen-prost-crate
+          else
+            echo "protoc-gen-prost-crate found in cache, skipping install"
+          fi
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Run Buf Lint
@@ -61,16 +67,9 @@ jobs:
         run: buf generate
 
       - name: Commit generated stubs
+        uses: iarekylew00t/verified-bot-commit@v2
         if: github.event_name != 'pull_request'
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add gen/rust
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "chore(gen): regenerate rust gRPC stubs [skip ci]"
-            git push
-          fi
+        with:
+          message: 'chore(gen): regenerate rust gRPC stubs [skip ci]'
+          files: |
+            **
