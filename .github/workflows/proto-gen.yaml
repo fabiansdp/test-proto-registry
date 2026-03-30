@@ -48,7 +48,7 @@ jobs:
         with:
           setup_only: true
 
-      - name: Install protoc
+      - name: Install protoc and protoc-gen-prost-crate
         if: steps.cache-tools.outputs.cache-hit != 'true'
         run: |
           echo "Installing protoc..."
@@ -57,9 +57,6 @@ jobs:
           unzip -o /tmp/protoc.zip -d "$HOME/.local" bin/protoc include/*
           rm /tmp/protoc.zip
 
-      - name: Install protoc-gen-prost-crate
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: |
           echo "Installing protoc-gen-prost-crate..."
           cargo install protoc-gen-prost-crate
 
