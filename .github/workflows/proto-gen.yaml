@@ -1,7 +1,6 @@
-name: Generate Protobuf Code
+name: Generate gRPC Stubs
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -10,133 +9,55 @@ on:
       - "buf.yaml"
       - "Cargo.toml.tmpl"
   pull_request:
-    branches: [main]
     paths:
       - "proto/**"
       - "buf.gen.yaml"
       - "buf.yaml"
       - "Cargo.toml.tmpl"
-
-permissions:
-  contents: write
-
-env:
-  CARGO_TERM_COLOR: always
+  workflow_dispatch:
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────────
-  # Job 1: Lint protos and check for breaking changes (runs on every PR)
-  # ──────────────────────────────────────────────────────────────────────────
-  lint-and-breaking:
-    name: Lint & Breaking Changes
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: bufbuild/buf-action@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Buf lint
-        run: buf lint
-
-      - name: Buf breaking change detection
-        if: github.event_name == 'pull_request'
-        run: buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main"
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Job 2: Generate Rust code and commit (only on push to main)
-  # ──────────────────────────────────────────────────────────────────────────
   generate:
-    name: Generate Rust Stubs
-    needs: lint-and-breaking
+    name: Generate Rust gRPC Stubs
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-
-    env:
-      BUF_GEN_PLUGIN_PARALLELISM: 1
-      CARGO_BUILD_JOBS: 2
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Install buf CLI
-      - uses: bufbuild/buf-action@v1
+      - name: Cache Buf
+        uses: actions/cache@v4
         with:
-          # Set up the Action and do nothing else.
-          setup_only: true
+          path: |
+            ~/.cache/buf
+            ~/.buf
+          key: ${{ runner.os }}-buf-${{ hashFiles('proto/buf.yaml', 'proto/buf.gen.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-buf-
 
-      # Install protobuf compiler (required by prost plugins at runtime)
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-          protoc --version
-
-      # Install Rust toolchain
-      - uses: dtolnay/rust-toolchain@stable
-
-      # Cache protoc plugins
-      - name: Cache protoc plugins
-        id: cache-plugins
-        uses: actions/cache@v5
+      - name: Run Buf Generate
+        uses: bufbuild/buf-action@v1
         with:
-          path: ~/.cargo/bin
-          key: protoc-plugins-${{ runner.os }}
+          input: proto
+          push: false
+          lint: true
+          breaking: true
+          format: false
+          generate: true
 
-      # Install the prost/tonic buf plugins (skipped if cache hit)
-      - name: Install protoc-gen plugins
-        if: steps.cache-plugins.outputs.cache-hit != 'true'
+      - name: Commit generated stubs
+        if: github.event_name != 'pull_request'
         run: |
-          cargo install protoc-gen-prost --locked
-          cargo install protoc-gen-tonic --locked
-          cargo install protoc-gen-prost-crate --locked
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Verify everything is on PATH
-      - name: Verify tools
-        run: |
-          which buf
-          which protoc-gen-prost
-          which protoc-gen-tonic
-          which protoc-gen-prost-crate
-          # Confirm they're actually executable
-          protoc-gen-prost --help || true
-          protoc-gen-tonic --help || true
-          protoc-gen-prost-crate --help || true
-          buf generate
+          git add gen/rust
 
-      # Clean old generated code
-      - name: Clean generated directory
-        run: rm -rf gen/rust/src gen/rust/Cargo.toml
-
-      # Generate code
-      - name: Buf generate
-        run: buf generate
-
-      # Verify generated crate compiles
-      - name: Verify generated crate compiles
-        working-directory: gen/rust
-        run: cargo check
-
-      # Commit generated code
-      - name: Commit generated code
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add gen/rust/
           if git diff --cached --quiet; then
-            echo "No changes to generated code"
+            echo "No changes to commit."
           else
-            git commit -m "chore(rust): Generate protobuf stubs"
+            git commit -m "chore(gen): regenerate rust gRPC stubs [skip ci]"
             git push
           fi
-
-      # Tag version
-      - name: Create version tag
-        run: |
-          TAG="rust/v0.1.0-$(date +%Y%m%d%H%M%S)"
-          git tag "$TAG"
-          git push origin "$TAG"
-          echo "Tagged as $TAG"
