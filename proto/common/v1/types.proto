@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package common.v1;
+
+option go_package = "github.com/<your-org>/proto-repo/gen/go/common/v1;commonv1";
+option java_multiple_files = true;
+option java_package = "com.yourorg.proto.common.v1";
+
+// Reusable pagination request fields
+message PaginationRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+// Reusable pagination response fields
+message PaginationResponse {
+  string next_page_token = 1;
+  int32 total_count = 2;
+}
+
+// Standard money representation
+message Money {
+  string currency_code = 1; // ISO 4217 e.g. "USD"
+  int64 units = 2; // whole units e.g. 10
+  int32 nanos = 3; // nano units e.g. 500000000 = $10.50
+}

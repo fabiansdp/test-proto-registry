@@ -1,0 +1,113 @@
+name: Generate Protobuf Code
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "proto/**"
+      - "buf.gen.yaml"
+      - "buf.yaml"
+      - "Cargo.toml.tmpl"
+  pull_request:
+    branches: [main]
+    paths:
+      - "proto/**"
+      - "buf.gen.yaml"
+      - "buf.yaml"
+      - "Cargo.toml.tmpl"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 1: Lint protos and check for breaking changes (runs on every PR)
+  # ──────────────────────────────────────────────────────────────────────────
+  lint-and-breaking:
+    name: Lint & Breaking Changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Buf lint
+        run: buf lint
+
+      - name: Buf breaking change detection
+        if: github.event_name == 'pull_request'
+        run: buf breaking --against "https://github.com/${{ github.repository }}.git#branch=main"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Job 2: Generate Rust code and commit (only on push to main)
+  # ──────────────────────────────────────────────────────────────────────────
+  generate:
+    name: Generate Rust Stubs
+    needs: lint-and-breaking
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Install buf CLI
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Install Rust toolchain
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Cache the cargo-installed protoc plugins so we don't rebuild every run
+      - name: Cache protoc plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: protoc-plugins-${{ runner.os }}-v1
+
+      # Install the three prost/tonic buf plugins
+      - name: Install protoc-gen plugins
+        run: |
+          command -v protoc-gen-prost       || cargo install protoc-gen-prost
+          command -v protoc-gen-tonic       || cargo install protoc-gen-tonic
+          command -v protoc-gen-prost-crate || cargo install protoc-gen-prost-crate
+
+      # Wipe old generated code to avoid stale files
+      - name: Clean generated directory
+        run: rm -rf gen/rust/src gen/rust/Cargo.toml
+
+      # Run buf generate — this populates gen/rust/
+      - name: Buf generate
+        run: buf generate
+
+      # Make sure the generated crate actually compiles
+      - name: Verify generated crate compiles
+        working-directory: gen/rust
+        run: cargo check
+
+      # Commit the generated code back to main
+      - name: Commit generated code
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add gen/rust/
+          if git diff --cached --quiet; then
+            echo "No changes to generated code"
+          else
+            git commit -m "chore(rust): Generate protobuf stubs"
+            git push
+          fi
+
+      # Tag so downstream services can pin to a specific version
+      - name: Create version tag
+        run: |
+          TAG="rust/v0.1.0-$(date +%Y%m%d%H%M%S)"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "Tagged as $TAG"
