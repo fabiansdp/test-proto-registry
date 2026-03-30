@@ -1,0 +1,16 @@
+syntax = "proto3";
+package streaming;
+
+service StreamGatewayService {
+  // Receives a message stream and processes it to do something
+  rpc RecordSensor(stream SensorMessage) returns (SensorSummary);
+}
+
+message SensorMessage {
+  string device_id = 1;
+  string msg = 2;
+}
+
+message SensorSummary {
+  int32 num_msg = 1;
+}
