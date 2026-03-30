@@ -49,13 +49,26 @@ jobs:
       - name: Run Buf Lint
         run: buf lint
 
-      - name: Install protoc-gen-prost-crate and generate stubs
+      - name: Install protoc-gen-prost-crate
         run: |
           sudo apt-get update && sudo apt-get install -y protobuf-compiler
           cargo install protoc-gen-prost-crate
-          protoc --version
+
+      - name: Add cargo bin to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Generate stubs
+        run: |
           protoc-gen-prost-crate --version
           buf generate
+
+      # - name: Install protoc-gen-prost-crate and generate stubs
+      #   run: |
+      #     sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      #     cargo install protoc-gen-prost-crate
+      #     protoc --version
+      #     protoc-gen-prost-crate --version
+      #     buf generate
 
       - name: Commit generated stubs
         if: github.event_name != 'pull_request'
